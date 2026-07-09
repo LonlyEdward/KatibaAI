@@ -1,4 +1,4 @@
-package com.example.backend;
+package com.katibaai.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
