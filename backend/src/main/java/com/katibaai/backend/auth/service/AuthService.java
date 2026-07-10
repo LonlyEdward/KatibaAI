@@ -1,80 +1,131 @@
 package com.katibaai.backend.auth.service;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import com.katibaai.backend.auth.dto.*;
+import com.katibaai.backend.auth.entity.RefreshToken;
+import com.katibaai.backend.auth.exception.*;
+import com.katibaai.backend.auth.repository.RefreshTokenRepository;
+import com.katibaai.backend.user.entity.User;
+import com.katibaai.backend.user.enums.Role;
+import com.katibaai.backend.user.repository.UserRepository;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.function.Function;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Service
-public class JwtService {
+@RequiredArgsConstructor
+public class AuthService {
 
-    @Value("${app.jwt.secret}")
-    private String secretKey;
+    private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    @Value("${app.jwt.access-token-expiration}")
-    private long accessTokenExpiration;
+    @Value("${app.jwt.refresh-days}")
+    private int refreshDays;
 
-    private SecretKey signingKey;
-
-    @PostConstruct
-    private void init() {
-        if (secretKey == null || secretKey.isBlank()) {
-            throw new IllegalStateException("app.jwt.secret is not configured (set JWT_SECRET env var)");
+    // create a new user
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.email())) {
+            throw new EmailAlreadyExistsException("Email already exists");
         }
-        byte[] keyBytes = secretKey.getBytes();
-        if (keyBytes.length < 32) {
-            throw new IllegalStateException(
-                    "JWT secret must be at least 32 bytes for HS256 (got " + keyBytes.length + ")"
-            );
+        if (userRepository.existsByUsername(request.username())) {
+            throw new UsernameAlreadyExistsException("Username already exists");
         }
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+
+        User user = User.builder()
+                .username(request.username())
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .role(Role.USER)
+                .build();
+
+        userRepository.save(user);
+        return issueAuthResponse(user);
     }
 
-    public String generateToken(String email) {
-        Date now = new Date();
-        return Jwts.builder()
-                .subject(email)
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + accessTokenExpiration))
-                .signWith(signingKey)
-                .compact();
+    // authenticate an existing user
+    public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new InvalidCredentialsException("Invalid credentials");
+        }
+
+        return issueAuthResponse(user);
     }
 
-    public String extractEmail(String token) {
-        return extractClaim(token, Claims::getSubject);
+    // get a new access token
+    @Transactional
+    public AuthResponse refresh(RefreshRequest request) {
+        RefreshToken existing = refreshTokenRepository.findByToken(request.refreshToken())
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token not found"));
+
+        if (existing.isRevoked()) {
+            throw new InvalidRefreshTokenException("Refresh token has been revoked");
+        }
+        if (existing.getExpiryDate().isBefore(OffsetDateTime.now())) {
+            throw new RefreshTokenExpiredException("Refresh token has expired, please log in again");
+        }
+
+        User user = existing.getUser();
+
+        // rotation: replace the token value + expiry on the same row
+        existing.setToken(UUID.randomUUID().toString());
+        existing.setExpiryDate(OffsetDateTime.now().plusDays(refreshDays));
+        refreshTokenRepository.save(existing);
+
+        String newAccessToken = jwtService.generateToken(user.getEmail());
+
+        return AuthResponse.success(
+                newAccessToken,
+                existing.getToken(),
+                jwtService.getExpiration(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole().name()
+        );
     }
 
-    public boolean isTokenValid(String token, String email) {
-        return extractEmail(token).equals(email) && !isTokenExpired(token);
+    private AuthResponse issueAuthResponse(User user) {
+        String token = jwtService.generateToken(user.getEmail());
+        RefreshToken refreshToken = createOrReplaceRefreshToken(user);
+
+        return AuthResponse.success(
+                token,
+                refreshToken.getToken(),
+                jwtService.getExpiration(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole().name()
+        );
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+    private RefreshToken createOrReplaceRefreshToken(User user) {
+        RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
+                .orElse(RefreshToken.builder().user(user).build());
+
+        refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setExpiryDate(OffsetDateTime.now().plusDays(refreshDays));
+        refreshToken.setRevoked(false);
+
+        return refreshTokenRepository.save(refreshToken);
     }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
+    // logout a user
+    @Transactional
+    public void logout(RefreshRequest request) {
+        RefreshToken existing = refreshTokenRepository.findByToken(request.refreshToken())
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token not found"));
 
-    private <T> T extractClaim(String token, Function<Claims, T> resolver) {
-        return resolver.apply(extractAllClaims(token));
-    }
-
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(signingKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    public long getExpiration() {
-        return accessTokenExpiration;
+        existing.setRevoked(true);
+        refreshTokenRepository.save(existing);
     }
 }
