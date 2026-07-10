@@ -1,175 +1,80 @@
 package com.katibaai.backend.auth.service;
 
-
-import com.katibaai.backend.auth.dto.*;
-import com.katibaai.backend.auth.entity.RefreshToken;
-import com.katibaai.backend.auth.repository.RefreshTokenRepository;
-import com.katibaai.backend.user.entity.User;
-import com.katibaai.backend.user.enums.Role;
-import com.katibaai.backend.user.repository.UserRepository;
-
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.security.crypto.password.PasswordEncoder;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
+import javax.crypto.SecretKey;
+import java.util.Date;
+import java.util.function.Function;
 
 @Service
-@RequiredArgsConstructor
-public class AuthService {
+public class JwtService {
 
+    @Value("${app.jwt.secret}")
+    private String secretKey;
 
-    private final UserRepository userRepository;
+    @Value("${app.jwt.access-token-expiration}")
+    private long accessTokenExpiration;
 
-    private final RefreshTokenRepository refreshTokenRepository;
+    private SecretKey signingKey;
 
-    private final PasswordEncoder passwordEncoder;
-
-    private final JwtService jwtService;
-
-
-
-    public AuthResponse register(RegisterRequest request){
-
-
-        if(userRepository.existsByEmail(request.email())){
-            return AuthResponse.failure(
-                    "Email already exists"
+    @PostConstruct
+    private void init() {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("app.jwt.secret is not configured (set JWT_SECRET env var)");
+        }
+        byte[] keyBytes = secretKey.getBytes();
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "JWT secret must be at least 32 bytes for HS256 (got " + keyBytes.length + ")"
             );
         }
-
-
-        if(userRepository.existsByUsername(request.username())){
-            return AuthResponse.failure(
-                    "Username already exists"
-            );
-        }
-
-
-
-        User user = User.builder()
-                .username(request.username())
-                .email(request.email())
-                .password(
-                        passwordEncoder.encode(
-                                request.password()
-                        )
-                )
-                .role(Role.USER)
-                .build();
-
-
-
-        userRepository.save(user);
-
-
-
-        String token =
-                jwtService.generateToken(
-                        user.getEmail()
-                );
-
-
-        RefreshToken refreshToken =
-                createRefreshToken(user);
-
-
-
-        return AuthResponse.success(
-                token,
-                refreshToken.getToken(),
-                jwtService.getExpiration(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getRole().name()
-        );
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-
-
-
-
-    public AuthResponse login(LoginRequest request){
-
-
-        User user =
-                userRepository
-                        .findByEmail(request.email())
-                        .orElse(null);
-
-
-
-        if(user == null){
-
-            return AuthResponse.failure(
-                    "Invalid credentials"
-            );
-        }
-
-
-
-        if(!passwordEncoder.matches(
-                request.password(),
-                user.getPassword()
-        )){
-
-            return AuthResponse.failure(
-                    "Invalid credentials"
-            );
-        }
-
-
-
-        String token =
-                jwtService.generateToken(
-                        user.getEmail()
-                );
-
-
-
-        RefreshToken refreshToken =
-                createRefreshToken(user);
-
-
-
-        return AuthResponse.success(
-                token,
-                refreshToken.getToken(),
-                jwtService.getExpiration(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getRole().name()
-        );
+    public String generateToken(String email) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(email)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessTokenExpiration))
+                .signWith(signingKey)
+                .compact();
     }
 
-
-
-
-
-    private RefreshToken createRefreshToken(User user){
-
-
-        RefreshToken refreshToken =
-                RefreshToken.builder()
-                        .token(
-                                UUID.randomUUID().toString()
-                        )
-                        .user(user)
-                        .expiryDate(
-                                OffsetDateTime.now()
-                                        .plusDays(7)
-                        )
-                        .build();
-
-
-
-        return refreshTokenRepository.save(
-                refreshToken
-        );
+    public String extractEmail(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
+    public boolean isTokenValid(String token, String email) {
+        return extractEmail(token).equals(email) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    private <T> T extractClaim(String token, Function<Claims, T> resolver) {
+        return resolver.apply(extractAllClaims(token));
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public long getExpiration() {
+        return accessTokenExpiration;
+    }
 }

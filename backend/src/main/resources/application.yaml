@@ -8,5 +8,11 @@ spring:
     hibernate:
       ddl-auto: validate
 
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiration-minutes: ${JWT_EXPIRY_MINUTES}
+    refresh-days: ${JWT_REFRESH_DAYS}
+
   flyway:
     enabled: true
