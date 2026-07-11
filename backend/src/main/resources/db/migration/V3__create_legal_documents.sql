@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE legal_documents (
     id UUID PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
