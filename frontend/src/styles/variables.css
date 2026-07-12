@@ -1,0 +1,15 @@
+:root {
+  --color-primary: #1e3a8a;
+
+  --color-background: #ffffff;
+
+  --color-surface: #f8fafc;
+
+  --color-text: #111827;
+
+  --border-radius: 8px;
+
+  --transition: 0.3s ease;
+
+  --font-body: "Inter", sans-serif;
+}

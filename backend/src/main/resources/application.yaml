@@ -7,6 +7,17 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+  flyway:
+    enabled: true
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        options:
+          model: nomic-embed-text
+      chat:
+        options:
+          model: qwen2.5:7b
 
 app:
   jwt:
@@ -14,5 +25,4 @@ app:
     access-token-expiration-minutes: ${JWT_EXPIRY_MINUTES}
     refresh-days: ${JWT_REFRESH_DAYS}
 
-  flyway:
-    enabled: true
+

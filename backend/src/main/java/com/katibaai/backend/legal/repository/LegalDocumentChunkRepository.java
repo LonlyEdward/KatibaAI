@@ -15,7 +15,7 @@ public interface LegalDocumentChunkRepository extends JpaRepository<LegalDocumen
 
     List<LegalDocumentChunk> findByDocumentAndArticleNumber(LegalDocument document, String articleNumber);
 
-    List<LegalDocumentChunk> findByDocumentAndChapter(LegalDocument document, String chapter);
+    List<LegalDocumentChunk> findByDocumentAndChapterNumber(LegalDocument document, Integer chapterNumber);
 
     List<LegalDocumentChunk> findByDocumentOrderByChunkIndex(LegalDocument document);
 }

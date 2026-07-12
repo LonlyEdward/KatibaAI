@@ -25,20 +25,29 @@ public class LegalDocumentChunk {
     @JoinColumn(name = "document_id", nullable = false)
     private LegalDocument document;
 
-    @Column(length = 100)
-    private String chapter;
+    @Column(name = "chapter_number")
+    private Integer chapterNumber;
 
-    @Column(length = 100)
-    private String part;
+    @Column(name = "chapter_title")
+    private String chapterTitle;
 
-    @Column(name = "article_number", length = 50)
+    @Column(name = "part_number")
+    private Integer partNumber;
+
+    @Column(name = "part_title")
+    private String partTitle;
+
+    @Column(name = "section_number")
+    private Integer sectionNumber;
+
+    @Column(name = "section_title")
+    private String sectionTitle;
+
+    @Column(name = "article_number", length = 10)
     private String articleNumber;
 
-    @Column(name = "section_number", length = 50)
-    private String sectionNumber;
-
-    @Column(length = 50)
-    private String subsection;
+    @Column(name = "paragraph_number")
+    private Integer paragraphNumber;
 
     @Column(name = "chunk_index", nullable = false)
     private Integer chunkIndex;
