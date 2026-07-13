@@ -1,14 +1,15 @@
 package com.katibaai.backend.legal.ingestion;
 
 import com.katibaai.backend.ai.embedding.EmbeddingService;
-import com.katibaai.backend.legal.ingestion.DocxParagraph;
-import com.katibaai.backend.legal.ingestion.ParsedChunk;
 import com.katibaai.backend.legal.entity.LegalDocument;
 import com.katibaai.backend.legal.entity.LegalDocumentChunk;
 import com.katibaai.backend.legal.repository.LegalDocumentChunkRepository;
 import com.katibaai.backend.legal.repository.LegalDocumentRepository;
+import com.pgvector.PGvector;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.util.List;
@@ -27,7 +28,9 @@ public class ConstitutionImporter {
     private final EmbeddingService embeddingService;
     private final LegalDocumentRepository documentRepository;
     private final LegalDocumentChunkRepository chunkRepository;
+    private final JdbcTemplate jdbcTemplate;
 
+    @Transactional
     public void importConstitution(File docxFile) {
         LegalDocument document = documentRepository.findById(CONSTITUTION_DOCUMENT_ID)
                 .orElseThrow(() -> new IllegalStateException(
@@ -68,10 +71,20 @@ public class ConstitutionImporter {
                     .paragraphNumber(chunk.getParagraphNumber())
                     .chunkIndex(chunk.getChunkIndex())
                     .content(chunk.getContent())
-                    .embedding(embedding)
                     .build();
 
-            chunkRepository.save(entity);
+            LegalDocumentChunk savedEntity = chunkRepository.saveAndFlush(entity);
+
+            int rowsAffected = jdbcTemplate.update(
+                    "UPDATE legal_document_chunks SET embedding = ? WHERE id = ?",
+                    new PGvector(embedding),
+                    savedEntity.getId()
+            );
+
+            if (rowsAffected != 1) {
+                System.out.println("WARNING: embedding update affected " + rowsAffected + " rows for chunk id " + savedEntity.getId());
+            }
+
             saved++;
             if (saved % 20 == 0) {
                 System.out.println("Saved " + saved + "/" + chunks.size());

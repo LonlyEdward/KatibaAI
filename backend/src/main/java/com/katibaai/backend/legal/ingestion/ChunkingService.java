@@ -1,6 +1,11 @@
 package com.katibaai.backend.legal.ingestion;
 
 import com.katibaai.backend.legal.ingestion.ParsedChunk;
+import com.knuddels.jtokkit.Encodings;
+import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.EncodingRegistry;
+import com.knuddels.jtokkit.api.EncodingType;
+import com.knuddels.jtokkit.api.IntArrayList;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -10,13 +15,24 @@ import java.util.regex.Pattern;
 @Component
 public class ChunkingService {
 
-    private static final int MAX_WORDS_PER_CHUNK = 400;
+    private static final int MIN_TOKENS_PER_CHUNK = 300;
+    private static final int MAX_TOKENS_PER_CHUNK = 500;
+    private static final double OVERLAP_RATIO = 0.10;
+
     private static final Pattern SUBARTICLE_SPLIT = Pattern.compile("(?=\\d+\\. )");
+
+    private final Encoding encoding;
+
+    public ChunkingService() {
+        EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
+        this.encoding = registry.getEncoding(EncodingType.CL100K_BASE);
+    }
 
     public List<ParsedChunk> chunk(List<ParsedChunk> articles) {
         List<ParsedChunk> result = new ArrayList<>();
         for (ParsedChunk article : articles) {
-            if (countWords(article.getContent()) <= MAX_WORDS_PER_CHUNK) {
+            int tokenCount = countTokens(article.getContent());
+            if (tokenCount <= MAX_TOKENS_PER_CHUNK) {
                 result.add(article.toBuilder().chunkIndex(0).build());
             } else {
                 result.addAll(splitArticle(article));
@@ -27,66 +43,71 @@ public class ChunkingService {
 
     private List<ParsedChunk> splitArticle(ParsedChunk article) {
         String[] segments = SUBARTICLE_SPLIT.split(article.getContent());
+        if (segments.length <= 1) {
+            segments = article.getContent().split("(?<=\\. )");
+        }
 
-        List<ParsedChunk> pieces = new ArrayList<>();
+        List<String> rawPieces = new ArrayList<>();
         StringBuilder current = new StringBuilder();
-        int wordsSoFar = 0;
+        int currentTokens = 0;
 
         for (String segment : segments) {
-            int segWords = countWords(segment);
-            if (wordsSoFar + segWords > MAX_WORDS_PER_CHUNK && !current.isEmpty()) {
-                pieces.add(article.toBuilder().content(current.toString().trim()).build());
+            int segTokens = countTokens(segment);
+
+            if (currentTokens + segTokens > MAX_TOKENS_PER_CHUNK && currentTokens >= MIN_TOKENS_PER_CHUNK) {
+                rawPieces.add(current.toString().trim());
                 current = new StringBuilder();
-                wordsSoFar = 0;
+                currentTokens = 0;
             }
+
             current.append(segment);
-            wordsSoFar += segWords;
+            currentTokens += segTokens;
         }
         if (!current.isEmpty()) {
-            pieces.add(article.toBuilder().content(current.toString().trim()).build());
+            rawPieces.add(current.toString().trim());
         }
 
-        // Fallback: if a single subarticle alone still exceeds the limit, hard-split by word count.
-        List<ParsedChunk> finalPieces = new ArrayList<>();
-        for (ParsedChunk piece : pieces) {
-            if (countWords(piece.getContent()) <= (int) (MAX_WORDS_PER_CHUNK * 1.5)) {
-                finalPieces.add(piece);
-            } else {
-                finalPieces.addAll(hardSplit(piece));
-            }
-        }
+        List<String> overlapped = applyOverlap(rawPieces);
 
         List<ParsedChunk> indexed = new ArrayList<>();
         int idx = 0;
-        for (ParsedChunk piece : finalPieces) {
-            indexed.add(piece.toBuilder().chunkIndex(idx++).build());
+        for (String piece : overlapped) {
+            indexed.add(article.toBuilder().content(piece).chunkIndex(idx++).build());
         }
         return indexed;
     }
 
-    private List<ParsedChunk> hardSplit(ParsedChunk piece) {
-        List<ParsedChunk> result = new ArrayList<>();
-        String[] words = piece.getContent().split("\\s+");
-        StringBuilder current = new StringBuilder();
-        int count = 0;
+    private List<String> applyOverlap(List<String> pieces) {
+        if (pieces.size() <= 1) return pieces;
 
-        for (String word : words) {
-            current.append(word).append(" ");
-            count++;
-            if (count >= MAX_WORDS_PER_CHUNK) {
-                result.add(piece.toBuilder().content(current.toString().trim()).build());
-                current = new StringBuilder();
-                count = 0;
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < pieces.size(); i++) {
+            if (i == 0) {
+                result.add(pieces.get(i));
+                continue;
             }
-        }
-        if (!current.isEmpty()) {
-            result.add(piece.toBuilder().content(current.toString().trim()).build());
+            String previous = pieces.get(i - 1);
+            String overlapText = tailByTokens(previous, (int) Math.round(MAX_TOKENS_PER_CHUNK * OVERLAP_RATIO));
+            result.add(overlapText + " " + pieces.get(i));
         }
         return result;
     }
 
-    private int countWords(String text) {
+    private String tailByTokens(String text, int tokenBudget) {
+        IntArrayList tokens = encoding.encode(text);
+        int size = tokens.size();
+        if (size <= tokenBudget) return text;
+
+        int[] all = tokens.toArray();
+        IntArrayList tail = new IntArrayList(tokenBudget);
+        for (int i = size - tokenBudget; i < size; i++) {
+            tail.add(all[i]);
+        }
+        return encoding.decode(tail);
+    }
+
+    private int countTokens(String text) {
         if (text == null || text.isBlank()) return 0;
-        return text.trim().split("\\s+").length;
+        return encoding.countTokens(text);
     }
 }

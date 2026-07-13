@@ -1,9 +1,8 @@
 package com.katibaai.backend.legal.entity;
 
+
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -28,19 +27,19 @@ public class LegalDocumentChunk {
     @Column(name = "chapter_number")
     private Integer chapterNumber;
 
-    @Column(name = "chapter_title")
+    @Column(name = "chapter_title", length = 500)
     private String chapterTitle;
 
     @Column(name = "part_number")
     private Integer partNumber;
 
-    @Column(name = "part_title")
+    @Column(name = "part_title", length = 500)
     private String partTitle;
 
     @Column(name = "section_number")
     private Integer sectionNumber;
 
-    @Column(name = "section_title")
+    @Column(name = "section_title", length = 500)
     private String sectionTitle;
 
     @Column(name = "article_number", length = 10)
@@ -55,8 +54,7 @@ public class LegalDocumentChunk {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(columnDefinition = "vector(768)")
+    @Transient
     private float[] embedding;
 
     @Column(name = "created_at", nullable = false, updatable = false)
