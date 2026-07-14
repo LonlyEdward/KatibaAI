@@ -2,6 +2,7 @@ package com.katibaai.backend.ai.chat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.katibaai.backend.ai.chat.ChatResponse;
+import com.katibaai.backend.ai.chat.Source;
 import com.katibaai.backend.ai.prompt.PromptBuilder;
 import com.katibaai.backend.ai.retrieval.RetrievalService;
 import com.katibaai.backend.ai.retrieval.RetrievedChunk;

@@ -1,3 +1,41 @@
 type Query {
-    ping: String
+    mySessions: [ChatSessionSummary!]!
+    session(id: ID!): ChatSessionDetail
+}
+
+type Mutation {
+    askQuestion(question: String!, sessionId: ID): ChatResponse!
+}
+
+type ChatSessionSummary {
+    id: ID!
+    title: String!
+    createdAt: String!
+    updatedAt: String!
+}
+
+type ChatSessionDetail {
+    id: ID!
+    title: String!
+    messages: [Message!]!
+}
+
+type Message {
+    id: ID!
+    role: String!
+    content: String!
+    sources: [String!]
+    createdAt: String!
+}
+
+type ChatResponse {
+    sessionId: ID!
+    answer: String!
+    sources: [Source!]!
+}
+
+type Source {
+    articleNumber: String!
+    chapterTitle: String
+    distance: Float!
 }

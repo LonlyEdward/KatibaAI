@@ -1,6 +1,5 @@
 package com.katibaai.backend.ai.chat;
 
-import com.katibaai.backend.ai.retrieval.RetrievedChunk;
 import lombok.Builder;
 import lombok.Value;
 
@@ -12,5 +11,5 @@ import java.util.UUID;
 public class ChatResponse {
     UUID sessionId;
     String answer;
-    List<RetrievedChunk> sources;
+    List<Source> sources;
 }
