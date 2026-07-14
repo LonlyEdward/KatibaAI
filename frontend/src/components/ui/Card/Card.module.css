@@ -1,0 +1,47 @@
+.card{
+
+    background:white;
+
+    border:1px solid #E5E7EB;
+
+    border-radius:14px;
+
+    padding:2rem;
+
+    width:100%;
+
+    max-width:500px;
+
+}
+
+.header{
+
+    margin-bottom:1.5rem;
+
+}
+
+.title{
+
+    font-size:1.6rem;
+
+    font-weight:700;
+
+    margin-bottom:.5rem;
+
+}
+
+.subtitle{
+
+    color:#6B7280;
+
+    line-height:1.5;
+
+}
+
+.content{
+
+    display:flex;
+
+    flex-direction:column;
+
+}

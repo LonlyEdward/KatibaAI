@@ -1,0 +1,55 @@
+.authPage {
+
+    min-height:100vh;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    padding:2rem;
+
+    background:#F9FAFB;
+
+}
+
+
+.form {
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:1.25rem;
+
+}
+
+
+.footerText {
+
+    text-align:center;
+
+    margin-top:1rem;
+
+    color:#6B7280;
+
+}
+
+
+.footerText a {
+
+    color:#1E40AF;
+
+    font-weight:600;
+
+    text-decoration:none;
+
+}
+
+
+.footerText a:hover {
+
+    text-decoration:underline;
+
+}

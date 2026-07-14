@@ -1,12 +1,12 @@
 import { Routes, Route } from "react-router-dom";
 
-import Landing from "../pages/Landing";
-import Login from "../pages/Login";
-import Register from "../pages/Register";
-import Chat from "../pages/Chat";
-import History from "../pages/History";
-import Profile from "../pages/Profile";
-import Settings from "../pages/Settings";
+import Landing from "../pages/landing/Landing";
+import Login from "../pages/auth/Login";
+import Register from "../pages/auth/Register";
+import Chat from "../pages/chat/Chat";
+import History from "../pages/history/History";
+import Profile from "../pages/profile/Profile";
+import Settings from "../pages/settings/Settings";
 import NotFound from "../pages/NotFound";
 
 import MainLayout from "../layouts/MainLayout";
