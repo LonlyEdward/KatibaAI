@@ -1,8 +1,6 @@
 package com.katibaai.backend.ai.chat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.katibaai.backend.ai.chat.ChatResponse;
-import com.katibaai.backend.ai.chat.Source;
 import com.katibaai.backend.ai.prompt.PromptBuilder;
 import com.katibaai.backend.ai.retrieval.RetrievalService;
 import com.katibaai.backend.ai.retrieval.RetrievedChunk;
@@ -17,6 +15,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,8 +38,10 @@ public class ChatService {
                 .orElseThrow(() -> new IllegalArgumentException("Session not found"))
                 : createSession(user, question);
 
+        List<Message> recentHistory = messageRepository.findTop6BySessionOrderByCreatedAtDesc(session);
+
         List<RetrievedChunk> chunks = retrievalService.retrieveRelevantChunks(question);
-        String prompt = promptBuilder.buildPrompt(question, chunks);
+        String prompt = promptBuilder.buildPrompt(question, chunks, recentHistory);
 
         String answer = chatClient.prompt()
                 .user(prompt)
@@ -56,13 +57,21 @@ public class ChatService {
 
         saveMessage(session, MessageRole.ASSISTANT, answer, sourcesJson);
 
-        session.setUpdatedAt(java.time.OffsetDateTime.now());
+        session.setUpdatedAt(OffsetDateTime.now());
         sessionRepository.save(session);
+
+        List<Source> sources = chunks.stream()
+                .map(c -> Source.builder()
+                        .articleNumber(c.getArticleNumber())
+                        .chapterTitle(c.getChapterTitle())
+                        .distance(c.getDistance())
+                        .build())
+                .collect(Collectors.toList());
 
         return ChatResponse.builder()
                 .sessionId(session.getId())
                 .answer(answer)
-                .sources(chunks)
+                .sources(sources)
                 .build();
     }
 
