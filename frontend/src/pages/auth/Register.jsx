@@ -5,6 +5,8 @@ import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 
+import authService from "../../services/auth/authService";
+
 import styles from "./Auth.module.css";
 
 
@@ -124,35 +126,42 @@ function Register() {
       setLoading(true);
 
 
-      /*
-          Later:
+      const response = await authService.register({
 
-          await authService.register({
-              username,
-              email,
-              password
-          })
+        username: formData.username,
 
+        email: formData.email,
 
-          Auto login
+        password: formData.password,
 
-          navigate("/chat")
-      */
+      });
 
 
-      console.log(
-          "Register data:",
-          formData
-      );
+
+      if (!response.success) {
+
+        setErrors({
+
+          general: response.message,
+
+        });
+
+        return;
+
+      }
 
 
-      navigate("/chat");
+      navigate("/login");
 
 
     } catch(error) {
 
 
-      console.error(error);
+      setErrors({
+
+        general: "Registration failed. Try again.",
+
+      });
 
 
     } finally {
@@ -275,6 +284,16 @@ function Register() {
 
             />
 
+
+            {errors.general && (
+
+                <p className={styles.error}>
+
+                  {errors.general}
+
+                </p>
+
+            )}
 
 
 

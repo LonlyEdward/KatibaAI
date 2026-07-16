@@ -5,12 +5,17 @@ import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 
+import authService from "../../services/auth/authService";
+import { useAuth } from "../../contexts/auth";
+
 import styles from "./Auth.module.css";
 
 
 function Login() {
 
   const navigate = useNavigate();
+
+  const { login } = useAuth();
 
 
   const [formData, setFormData] = useState({
@@ -89,31 +94,41 @@ function Login() {
       setLoading(true);
 
 
-      /*
-          Later:
-
-          await authService.login(formData)
-
-          AuthContext update
-
-          navigate("/chat")
-      */
+      const response = await authService.login(formData);
 
 
-      console.log("Login data:", formData);
+      if (!response.success) {
+
+        setErrors({
+          general: response.message,
+        });
+
+        return;
+
+      }
 
 
-      // Temporary navigation test
-      navigate("/chat");
+      login(response);
 
 
-    } catch (error) {
+      navigate("/chat", {
+        replace: true,
+      });
 
-      console.error(error);
+
+    } catch(error) {
+
+
+      setErrors({
+        general: "Unable to login. Please try again.",
+      });
+
 
     } finally {
 
+
       setLoading(false);
+
 
     }
 
@@ -178,6 +193,17 @@ function Login() {
                 required
 
             />
+
+
+            {errors.general && (
+
+                <p className={styles.error}>
+
+                  {errors.general}
+
+                </p>
+
+            )}
 
 
 

@@ -5,9 +5,9 @@ import { BrowserRouter } from "react-router-dom";
 
 import { ApolloProvider } from "@apollo/client";
 
-import apolloClient from "./api/apollo/apolloClient";
+import apolloClient from "./api/graphql/apolloClient";
 
-import { AuthProvider } from "./contexts/auth/AuthProvider";
+import { AuthProvider } from "./contexts/auth/";
 import { ThemeProvider } from "./contexts/theme/ThemeProvider";
 
 import App from "./App";
