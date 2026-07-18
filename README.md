@@ -1,12 +1,12 @@
 # KatibaAI
 
-AI powered legal assistant that uses Retrieval Augmented Generation (RAG) to answer questions about the Constitution of Tanzania, providing context aware responses supported by relevant constitutional articles and references.
+AI powered legal assistant that uses Retrieval Augmented Generation (RAG) to answer questions about the Constitution of Tanzania, providing context-aware responses supported by relevant constitutional articles and references.
 
 ---
 
 ## Description
 
-KatibaAI streamlines access to the Tanzanian Constitution's Articles by employing a retrieval-augmented generation (RAG) pipeline. The system pre-processes and chunks the constitutional text into segments while preserving hierarchical metadata which are then converted into vector embeddings. When a user submits a natural language query, a semantic similarity search identifies and retrieves the most relevant text segments. These contexts are passed to a Large Language Model (LLM) constrained by strict system prompts, forcing the model to synthesize answers exclusively from the retrieved text and generate precise, verifiable Article citations while preventing hallucinations.
+The Constitution of Tanzania is a long formally structured document with many Articles making it difficult to quickly find the specific provisions needed to answer real questions. KatibaAI solves this using Retrieval-Augmented Generation (RAG). It chunks the Constitution into structured sections, generates vector embeddings for semantic search, retrieves the most relevant constitutional provisions for each user query and provides them as context to a Large Language Model (LLM). The LLM then generates an answer grounded in the retrieved constitutional text while citing the relevant Article numbers.
 
 ---
 
@@ -26,8 +26,8 @@ KatibaAI streamlines access to the Tanzanian Constitution's Articles by employin
 
 | Layer | Technology |
 |---|---|
-| Language / Framework | Java 21, Spring Boot 3.4.5 |
-| Frontend | React |
+| Backend language / framework | Java 21, Spring Boot 3.4.5 |
+| Frontend | React (Vite) |
 | API | GraphQL (chat features), REST (authentication) |
 | Database | PostgreSQL 16 with the pgvector extension |
 | Database migrations | Flyway |
@@ -37,6 +37,7 @@ KatibaAI streamlines access to the Tanzanian Constitution's Articles by employin
 | Document parsing | Apache POI |
 | Tokenization | jtokkit |
 | ORM | Spring Data JPA / Hibernate |
+| Local infrastructure | Docker Compose (PostgreSQL + Ollama) |
 
 ---
 
@@ -58,19 +59,15 @@ KatibaAI streamlines access to the Tanzanian Constitution's Articles by employin
 ### Prerequisites
 
 - Java 21
-- PostgreSQL 16+ with the `pgvector` extension enabled
-- Ollama with the required models pulled:
-  ```bash
-  ollama pull nomic-embed-text
-  ollama pull qwen2.5:3b
-  ```
+- Node.js (for the frontend)
+- Docker + Docker Compose
 
 ### Steps
 
 1. Clone the repository:
    ```bash
    git clone git@github.com:LonlyEdward/KatibaAI.git
-   cd KatibaAI/backend
+   cd KatibaAI
    ```
 
 2. Create a `.env` file in the project root:
@@ -87,22 +84,47 @@ KatibaAI streamlines access to the Tanzanian Constitution's Articles by employin
    CORS_ALLOWED_ORIGINS=http://localhost:5173
    ```
 
-3. Load the environment variables and run the app:
+3. Start PostgreSQL and Ollama
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. Pull the required models into the Ollama container
+
+   ```bash
+   docker exec -it katiba-ollama ollama pull nomic-embed-text
+   docker exec -it katiba-ollama ollama pull qwen2.5:3b
+   ```
+
+5. Run the backend
+
    ```bash
    set -a
-   source .env
+   source ../.env
    set +a
    ./mvnw spring-boot:run
    ```
 
-   This applies all database migrations automatically on startup.
+  This applies all database migrations automatically on startup.
 
-4. Ingest the Constitution (one time, populates the database with searchable content):
+
+6. Ingest the Constitution (one-time)
+
    ```bash
    ./mvnw spring-boot:run -Dspring-boot.run.profiles=ingest
    ```
 
+7. Run the frontend
+
+   ```bash
+   cd ../frontend
+   npm install
+   npm run dev
+   ```
+
 ---
+
 
 ## Usage
 

@@ -1,7 +1,9 @@
-import AppRoutes from "./routes/AppRoutes";
-
 function App() {
-  return <AppRoutes />;
+  return (
+      <div className="App">
+        <h1>KatibaAI</h1>
+      </div>
+  );
 }
 
 export default App;
