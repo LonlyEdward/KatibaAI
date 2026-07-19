@@ -1,1 +1,37 @@
+# IDEs & Editors
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Java / Spring Boot
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Spring Boot generated files
+.springBeans
+.sts4-cache/
+
+# Node.js / React / Vite
+node_modules/
+dist/
+build/
+.vite/
+
+# npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment Variables
 .env
+.env.*
+
+# Logs
+*.log

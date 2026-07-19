@@ -35,11 +35,35 @@ The Constitution of Tanzania is a long formally structured document with many Ar
 | Chat model | Qwen2.5 (via Ollama, local inference) |
 | Embedding model | nomic-embed-text (via Ollama, 768 dimensions) |
 | Document parsing | Apache POI |
-| Tokenization | jtokkit |
+| Database Migrations | Flyway |
 | ORM | Spring Data JPA / Hibernate |
 | Local infrastructure | Docker Compose (PostgreSQL + Ollama) |
 
 ---
+# Architecture
+
+```text
+                User
+                  │
+                  ▼
+          React Frontend
+                  │
+         GraphQL / REST APIs
+                  │
+                  ▼
+        Spring Boot Backend
+                  │
+      ┌───────────┴────────────┐
+      │                        │
+      ▼                        ▼
+ PostgreSQL + pgvector     Ollama (LLM)
+      │                        │
+      └───────────┬────────────┘
+                  ▼
+      Retrieval-Augmented Generation
+                  ▼
+          Grounded AI Response
+```
 
 ## How It Works
 
