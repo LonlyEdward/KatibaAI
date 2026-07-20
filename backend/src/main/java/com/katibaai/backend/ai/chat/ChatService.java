@@ -35,6 +35,7 @@ public class ChatService {
     public ChatResponse askQuestion(User user, UUID sessionId, String question) {
         ChatSession session = (sessionId != null)
                 ? sessionRepository.findById(sessionId)
+                .filter(s -> s.getUser().getId().equals(user.getId()))
                 .orElseThrow(() -> new IllegalArgumentException("Session not found"))
                 : createSession(user, question);
 
@@ -93,7 +94,7 @@ public class ChatService {
                 .session(session)
                 .role(role)
                 .content(content)
-                .sources(sources)
+                .sourcesJson(sources)
                 .build();
         messageRepository.save(message);
     }

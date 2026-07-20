@@ -1,9 +1,12 @@
 package com.katibaai.backend.chat.entity;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -14,6 +17,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class Message {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Id
     @GeneratedValue
@@ -30,8 +35,8 @@ public class Message {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(columnDefinition = "TEXT")
-    private String sources;
+    @Column(name = "sources", columnDefinition = "TEXT")
+    private String sourcesJson;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -39,5 +44,16 @@ public class Message {
     @PrePersist
     protected void onCreate() {
         createdAt = OffsetDateTime.now();
+    }
+
+    public List<String> getSources() {
+        if (sourcesJson == null || sourcesJson.isBlank()) {
+            return List.of();
+        }
+        try {
+            return MAPPER.readValue(sourcesJson, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 }
