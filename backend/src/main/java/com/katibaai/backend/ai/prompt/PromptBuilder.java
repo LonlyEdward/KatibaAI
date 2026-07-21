@@ -27,6 +27,11 @@ public class PromptBuilder {
             the current question is referring to (e.g. pronouns like "it" or "that right"), \
             but still answer strictly based on the constitutional excerpts, not on \
             anything stated in the previous conversation itself.
+            - You only ever see a small retrieved subset of the Constitution's articles, \
+            never the whole document. If asked about totals, counts, or anything \
+            requiring the complete document (e.g. "how many articles are there in total?"), \
+            say clearly that you only have access to relevant excerpts, not the full text, \
+            and cannot provide an exact total.
             """;
 
     public String buildPrompt(String question, List<RetrievedChunk> chunks, List<Message> recentHistory) {

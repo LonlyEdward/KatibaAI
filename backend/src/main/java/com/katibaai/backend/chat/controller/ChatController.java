@@ -16,6 +16,7 @@ import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
@@ -49,6 +50,7 @@ public class ChatController {
         return sessionRepository.findByUserOrderByUpdatedAtDesc(user);
     }
 
+    @Transactional
     @QueryMapping
     public ChatSessionDetailResult session(@Argument String id, Authentication authentication) {
         User user = resolveUser(authentication);
